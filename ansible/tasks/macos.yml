@@ -1,0 +1,45 @@
+---
+# Runbook Teil C — macOS: App per Homebrew-Cask, Registry unter
+# ~/Library/Application Support/obsidian/obsidian.json.
+#
+# Pitfall (Runbook): Die Registry darf nie unter laufender App editiert
+# werden — Obsidian schreibt sie beim Beenden neu. Deshalb: erst prüfen,
+# ob überhaupt eine Änderung nötig ist, nur dann Obsidian beenden.
+
+- name: Obsidian per Homebrew-Cask installieren (falls nicht vorhanden)
+  ansible.builtin.command: brew install --cask obsidian
+  args:
+    creates: /Applications/Obsidian.app
+
+- name: Prüfen, ob der Vault schon registriert ist
+  ansible.builtin.script: >
+    files/register_vault.py
+    --registry "{{ ansible_facts.env.HOME }}/Library/Application Support/obsidian/obsidian.json"
+    --vault "{{ vault_path }}"
+    --check
+  register: reg_check
+  failed_when: reg_check.rc not in [0, 3]
+  changed_when: false
+
+- name: Obsidian beenden (Registry-Edit unter laufender App würde überschrieben)
+  ansible.builtin.shell: |
+    if pgrep -x Obsidian >/dev/null; then
+      osascript -e 'quit app "Obsidian"'
+      sleep 3
+    fi
+  when: reg_check.rc == 3
+  changed_when: false
+
+- name: Vault in Obsidian-Registry eintragen
+  ansible.builtin.script: >
+    files/register_vault.py
+    --registry "{{ ansible_facts.env.HOME }}/Library/Application Support/obsidian/obsidian.json"
+    --vault "{{ vault_path }}"
+  when: reg_check.rc == 3
+  register: reg_result
+  changed_when: "'ADDED' in reg_result.stdout"
+
+- name: Obsidian starten
+  ansible.builtin.command: open -a Obsidian
+  when: launch_obsidian | bool
+  changed_when: false

@@ -1,0 +1,68 @@
+---
+# Runbook Teil A — OS-unabhängig.
+# Vault-Inhalte werden mit force: false kopiert: Ein bestehendes, vom LLM
+# gepflegtes Vault wird niemals überschrieben (CLAUDE.md ändert sich nur
+# auf Anweisung, wiki/ gehört dem Maintainer).
+
+- name: Vault-Verzeichnisse anlegen (Schritt 1)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ vault_path }}/raw"
+    - "{{ vault_path }}/wiki"
+    - "{{ vault_path }}/.claude/commands"
+    - "{{ vault_path }}/scripts"
+
+- name: CLAUDE.md — Governing Schema (Schritt 2)
+  ansible.builtin.template:
+    src: templates/CLAUDE.md.j2
+    dest: "{{ vault_path }}/CLAUDE.md"
+    force: false
+    mode: "0644"
+
+- name: Slash-Commands (Schritt 3)
+  ansible.builtin.copy:
+    src: "commands/{{ item }}"
+    dest: "{{ vault_path }}/.claude/commands/{{ item }}"
+    force: false
+    mode: "0644"
+  loop:
+    - ingest.md
+    - query.md
+    - lint-wiki.md
+
+- name: Deterministisches Lint-Skript (Schritt 5)
+  ansible.builtin.copy:
+    src: lint_wiki.py
+    dest: "{{ vault_path }}/scripts/lint_wiki.py"
+    force: false
+    mode: "0755"
+
+- name: .gitignore (Schritt 6)
+  ansible.builtin.copy:
+    src: gitignore
+    dest: "{{ vault_path }}/.gitignore"
+    force: false
+    mode: "0644"
+
+- name: Git-Repo initialisieren (Schritt 6)
+  ansible.builtin.command: git init -q
+  args:
+    chdir: "{{ vault_path }}"
+    creates: "{{ vault_path }}/.git"
+
+- name: Prüfen, ob bereits ein Commit existiert
+  ansible.builtin.command: git rev-parse --verify HEAD
+  args:
+    chdir: "{{ vault_path }}"
+  register: git_head
+  failed_when: false
+  changed_when: false
+
+- name: Initial-Commit (Schritt 6)
+  ansible.builtin.shell: git add -A && git commit -q -m "Initial LLM-Wiki-Vault nach Karpathy-Muster"
+  args:
+    chdir: "{{ vault_path }}"
+  when: git_head.rc != 0

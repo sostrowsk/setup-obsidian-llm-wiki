@@ -1,0 +1,13 @@
+---
+# Zielpfad des Vaults (wird angelegt, falls nicht vorhanden)
+vault_path: "{{ ansible_facts.env.HOME }}/llm-wiki"
+
+# Zielsprache der Wiki-Seiten (landet im Governing Schema CLAUDE.md)
+wiki_language: Deutsch
+
+# Obsidian-App installieren und Vault registrieren?
+# false = nur Vault-Gerüst anlegen (Runbook-Frage 3)
+install_obsidian: true
+
+# Obsidian nach der Vault-Registrierung (neu) starten?
+launch_obsidian: false

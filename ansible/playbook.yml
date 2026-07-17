@@ -1,0 +1,36 @@
+---
+# Obsidian + LLM-Wiki (Karpathy-Muster) — Debian & macOS
+#
+# Aufruf (lokal):
+#   ansible-playbook -i inventory.ini playbook.yml
+#
+# Variablen (Defaults in group_vars/all.yml) per -e überschreibbar:
+#   -e vault_path=$HOME/llm-wiki -e wiki_language=Deutsch -e install_obsidian=true
+#
+# Automatisiert werden die deterministischen Teile des Runbooks
+# (SETUP-OBSIDIAN-LLM-WIKI.md): Vault-Gerüst, CLAUDE.md, Slash-Commands,
+# Lint-Skript, Git-Init sowie App-Installation und Vault-Registrierung.
+# Der Bootstrap-Ingest (Runbook Schritt 4) bleibt LLM-Arbeit.
+
+- name: Obsidian + LLM-Wiki einrichten
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Gemeinsame Schritte (Vault, Schema, Commands, Lint, Git)
+      ansible.builtin.import_tasks: tasks/common.yml
+
+    - name: Debian-spezifisch (AppImage, Desktop-Eintrag, Registry)
+      ansible.builtin.import_tasks: tasks/debian.yml
+      when: ansible_facts['os_family'] == 'Debian' and install_obsidian | bool
+
+    - name: macOS-spezifisch (Homebrew-Cask, Registry)
+      ansible.builtin.import_tasks: tasks/macos.yml
+      when: ansible_facts['os_family'] == 'Darwin' and install_obsidian | bool
+
+    - name: Hinweis auf den nächsten Schritt
+      ansible.builtin.debug:
+        msg: >-
+          Vault steht unter {{ vault_path }}. Jetzt Bootstrap-Ingest per
+          Claude Code ausführen (Runbook Schritt 4): cd {{ vault_path }} && claude,
+          dann /ingest <erste Quelle>. Verifikation: python3 scripts/lint_wiki.py

@@ -1,0 +1,40 @@
+---
+# Runbook Teil B — Debian: AppImage ohne root, Desktop-Eintrag, Registry.
+# Voraussetzung: FUSE (fusermount3) für AppImages.
+
+- name: ~/Applications anlegen
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/Applications"
+    state: directory
+    mode: "0755"
+
+- name: Neueste Obsidian-AppImage-URL ermitteln
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -s https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest \
+      | grep -o 'https://[^"]*Obsidian-[0-9.]*\.AppImage' \
+      {% if ansible_facts['architecture'] in ['aarch64', 'arm64'] %}| grep arm64{% else %}| grep -v arm64{% endif %} | head -1
+  args:
+    executable: /bin/bash
+  register: appimage_url
+  changed_when: false
+
+- name: Obsidian-AppImage herunterladen
+  ansible.builtin.get_url:
+    url: "{{ appimage_url.stdout }}"
+    dest: "{{ ansible_facts.env.HOME }}/Applications/Obsidian.AppImage"
+    mode: "0755"
+
+- name: Desktop-Eintrag anlegen
+  ansible.builtin.template:
+    src: templates/obsidian.desktop.j2
+    dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/obsidian.desktop"
+    mode: "0644"
+
+- name: Vault in Obsidian-Registry eintragen (~/.config/obsidian/obsidian.json)
+  ansible.builtin.script: >
+    files/register_vault.py
+    --registry "{{ ansible_facts.env.HOME }}/.config/obsidian/obsidian.json"
+    --vault "{{ vault_path }}"
+  register: reg_result
+  changed_when: "'ADDED' in reg_result.stdout"

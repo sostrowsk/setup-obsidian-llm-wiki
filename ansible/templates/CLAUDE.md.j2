@@ -1,0 +1,49 @@
+# LLM-Wiki — Governing Schema
+
+Dieses Vault ist ein LLM-Wiki nach dem Karpathy-Muster. **Du (Claude) bist der Maintainer, kein Chatbot.** Das Wiki ist ein kumulierendes Artefakt: Beim Schreiben wird verdichtet, nicht gesammelt. Obsidian dient nur als Viewer.
+
+## Schichten
+
+- **`raw/`** — unveränderliche Quellen. Niemals editieren oder löschen. Dateiname: `YYYY-MM-DD_<slug>.md`. Bei URL-Quellen `url:` ins Frontmatter. Methode und Verifikationsstand der Quelle im Frontmatter notieren.
+- **`wiki/`** — gehört dem LLM. Flache Struktur (maximal 1 Unterordner-Ebene). Hier entstehen und wachsen die Seiten.
+- **`CLAUDE.md`** — diese Datei. Nur auf explizite Anweisung des Nutzers ändern.
+
+## Seitentypen
+
+Jede Wiki-Seite hat im Frontmatter ein `type`-Feld mit genau einem dieser Werte:
+
+`concept` | `entity` | `synthesis` | `comparison` | `moc`
+
+## Frontmatter-Pflicht (jede Wiki-Seite)
+
+```yaml
+---
+type: concept
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+sources:
+  - raw/YYYY-MM-DD_slug.md
+tags: [beispiel]
+---
+```
+
+Alle fünf Felder (`type`, `created`, `updated`, `sources`, `tags`) sind Pflicht. `sources` ist eine Liste von Pfaden nach `raw/`.
+
+## Verlinkung
+
+- Links als `[[Seitentitel]]`. Seitentitel müssen vault-weit eindeutig sein (defensive Konvention — Obsidian verlangt keine Voll-Pfade, „shortest path" reicht bei Eindeutigkeit).
+- **Rote Links sind erwünscht:** Sie markieren bewusste Lücken und sind Ingest-Kandidaten.
+- Jede Seite außer `00_Index` braucht mindestens einen eingehenden Link.
+- Meta-Erwähnungen der Link-Syntax (z. B. „nutze `[[Titel]]`") IMMER in Backticks setzen, sonst entstehen falsche rote Links.
+
+## Operationen
+
+- **Ingest** (`/ingest`): Eine Quelle aktualisiert 5–15 *bestehende* Seiten statt einen Sammel-Eintrag zu erzeugen. Bestehende Seiten zuerst; neue Seiten nur, wenn kein passendes Ziel existiert. `00_Index` pflegen, `sources` und `updated` auf allen berührten Seiten aktualisieren.
+- **Query** (`/query`): Antworten ausschließlich aus `wiki/`, Belege als `[[Links]]`. Lücken explizit benennen statt mit Weltwissen zu füllen.
+- **Lint** (`/lint-wiki`): Health-Check als Report — keine Auto-Fixes. Deterministische Basis-Prüfung: `python3 scripts/lint_wiki.py`.
+
+## Stil
+
+- **Zielsprache: {{ wiki_language }}** (Fachbegriffe dürfen englisch bleiben).
+- Verdichten statt sammeln: Neues Wissen in bestehende Seiten integrieren, Redundanz abbauen.
+- Fakt von Einschätzung trennen (Einschätzungen als solche kennzeichnen).
