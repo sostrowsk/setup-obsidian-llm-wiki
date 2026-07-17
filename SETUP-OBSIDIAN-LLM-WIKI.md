@@ -1,52 +1,52 @@
-# SETUP: Obsidian + LLM-Wiki (Karpathy-Muster) — Debian & macOS
+# SETUP: Obsidian + LLM Wiki (Karpathy pattern) — Debian & macOS
 
-Reproduzierbares Runbook, um auf einem frischen System ein LLM-Wiki mit Obsidian als Viewer und **Claude Code als Wiki-Maintainer** aufzusetzen. Getestet auf **Debian 13** (2026-07-08/09) und **macOS / Apple Silicon** (2026-07-17).
+Reproducible runbook for setting up an LLM wiki on a fresh system, with Obsidian as the viewer and **an LLM agent (reference: Claude Code) as the wiki maintainer**. Tested on **Debian 13** (2026-07-08/09) and **macOS / Apple Silicon** (2026-07-17). The wiki itself is fully local (plain Markdown + Git); with local models it also runs entirely offline — see "Optional: Obsidian with a local LLM" below.
 
-**An Claude:** Arbeite die Schritte der Reihe nach ab. Erkenne das Betriebssystem selbst (`uname`) und nutze den passenden OS-Teil (B = Debian, C = macOS). Frage vorab per AskUserQuestion: (1) Vault-Pfad (Default `~/llm-wiki`), (2) Wiki-Sprache (Default Deutsch), (3) Obsidian-App installieren oder nur Vault anlegen.
+**To Claude:** Work through the steps in order. Detect the operating system yourself (`uname`) and use the matching OS part (B = Debian, C = macOS). First ask via AskUserQuestion: (1) vault path (default `~/llm-wiki`), (2) wiki language (default German), (3) install the Obsidian app or create the vault only.
 
-> **Automatisierung:** Die OS-unabhängigen Schritte 1–3 und 6 sowie die App-Installation/Vault-Registrierung (Teil B/C) gibt es auch als Ansible-Playbook unter `ansible/` (Repo `setup-obsidian-llm-wiki`). Bootstrap-Ingest (Schritt 4) und Lint-Bewertung bleiben LLM-Arbeit.
-
----
-
-## Konzept in einem Absatz
-
-Drei Schichten: `raw/` (unveränderliche Quellen), `wiki/` (LLM-generierte, quervernetzte Seiten), `CLAUDE.md` (governing schema — macht aus Claude einen disziplinierten Maintainer). Drei Operationen: **Ingest** (eine Quelle aktualisiert 5–15 *bestehende* Seiten statt Sammel-Eintrag), **Query** (zitierte Synthese nur aus dem Wiki), **Lint** (Health-Check). Obsidian ingestiert nichts — es rendert nur die `.md`-Dateien live.
+> **Automation:** The OS-independent steps 1–3 and 6, plus app installation / vault registration (parts B/C), are also available as an Ansible playbook under `ansible/` (repository `setup-obsidian-llm-wiki`). Bootstrap ingest (step 4) and lint assessment remain LLM work.
 
 ---
 
-## Teil A — Gemeinsame Schritte (Debian & macOS identisch)
+## The concept in one paragraph
 
-### Schritt 1 — Vault-Gerüst
+Three layers: `raw/` (immutable sources), `wiki/` (LLM-generated, cross-linked pages), `CLAUDE.md` (governing schema — turns Claude into a disciplined maintainer). Three operations: **Ingest** (one source updates 5–15 *existing* pages instead of creating a dump page), **Query** (cited synthesis from the wiki only), **Lint** (health check). Obsidian ingests nothing — it only renders the `.md` files live.
+
+---
+
+## Part A — Common steps (identical on Debian & macOS)
+
+### Step 1 — Vault skeleton
 
 ```bash
 mkdir -p ~/llm-wiki/raw ~/llm-wiki/wiki ~/llm-wiki/.claude/commands
 ```
 
-### Schritt 2 — `CLAUDE.md` (Governing Schema, wichtigste Datei)
+### Step 2 — `CLAUDE.md` (governing schema, the most important file)
 
-Nach `~/llm-wiki/CLAUDE.md` schreiben — Kernregeln (Formulierung darf variieren, Inhalte nicht):
+Write to `~/llm-wiki/CLAUDE.md` — core rules (wording may vary, content must not):
 
-- **Rolle:** Claude ist Maintainer, kein Chatbot; das Wiki ist ein kumulierendes Artefakt (verdichten beim Schreiben).
-- **Schichten:** `raw/` immutable, Dateiname `YYYY-MM-DD_<slug>.md`, URL-Quellen mit `url:` im Frontmatter; `wiki/` gehört dem LLM, flach (max. 1 Unterordner-Ebene); `CLAUDE.md` nur auf Anweisung ändern.
-- **Seitentypen** (`type` im Frontmatter): `concept | entity | synthesis | comparison | moc`.
-- **Frontmatter-Pflicht** auf jeder Wiki-Seite: `type, created, updated, sources (Liste von raw-Pfaden), tags`.
-- **Verlinkung:** `[[Seitentitel]]`, Titel vault-weit eindeutig (defensive Konvention — Obsidian selbst verlangt keine Voll-Pfade, „shortest path" reicht bei Eindeutigkeit). Rote Links = erwünschte Lücken-Marker. Jede Seite außer dem Index braucht ≥ 1 eingehenden Link.
-- **Operationen:** Ingest (5–15 Berührungen, bestehende Seiten zuerst, `00_Index` pflegen), Query (nur aus `wiki/`, Lücken benennen statt Weltwissen), Lint (Report, keine Auto-Fixes).
-- **Stil:** Zielsprache festlegen; verdichten statt sammeln; Fakt von Einschätzung trennen.
+- **Role:** Claude is a maintainer, not a chatbot; the wiki is a cumulative artifact (condense while writing).
+- **Layers:** `raw/` is immutable, file name `YYYY-MM-DD_<slug>.md`, URL sources get `url:` in the frontmatter; `wiki/` belongs to the LLM, flat (max. 1 subfolder level); change `CLAUDE.md` only when instructed.
+- **Page types** (`type` in the frontmatter): `concept | entity | synthesis | comparison | moc`.
+- **Mandatory frontmatter** on every wiki page: `type, created, updated, sources (list of raw paths), tags`.
+- **Linking:** `[[Page Title]]`, titles unique vault-wide (defensive convention — Obsidian itself does not require full paths, "shortest path" suffices when unique). Red links = desired gap markers. Every page except the index needs ≥ 1 incoming link.
+- **Operations:** Ingest (5–15 touches, existing pages first, maintain `00_Index`), Query (from `wiki/` only, name gaps instead of using world knowledge), Lint (report, no auto-fixes).
+- **Style:** define the target language; condense instead of collect; separate fact from assessment.
 
-### Schritt 3 — Slash-Commands
+### Step 3 — Slash commands
 
-Drei Dateien unter `~/llm-wiki/.claude/commands/` (wirken, wenn Claude Code im Vault gestartet wird):
+Three files under `~/llm-wiki/.claude/commands/` (they take effect when Claude Code is started inside the vault):
 
-- **`ingest.md`** — `/ingest <url|pfad>`: Quelle datiert nach `raw/` (URL per WebFetch spiegeln), `wiki/` nach berührten Seiten durchsuchen und **aktualisieren** (Ziel 5–15), neue Seiten nur ohne passendes Ziel, quervernetzen, `00_Index` + `sources`/`updated` pflegen, Abschlussbericht (neu vs. aktualisiert, rote Links).
-- **`query.md`** — `/query <frage>`: Antwort ausschließlich aus `wiki/`, Belege als `[[Links]]`, Lücken explizit + als Ingest-Kandidat.
-- **`lint-wiki.md`** — `/lint-wiki`: kaputte/rote Links, Waisen, Schema-Verstöße (Frontmatter, nachträglich geänderte raw-Dateien via git diff, Titel-Duplikate), Widersprüche/veraltete Stände, Content-Lücken → priorisierter Report (P1 kaputt, P2 Schema, P3 Lücken).
+- **`ingest.md`** — `/ingest <url|path>`: place the source, dated, into `raw/` (mirror URLs via WebFetch), search `wiki/` for touched pages and **update** them (target 5–15), new pages only when no suitable target exists, cross-link, maintain `00_Index` + `sources`/`updated`, closing report (new vs. updated, red links).
+- **`query.md`** — `/query <question>`: answer exclusively from `wiki/`, evidence as `[[links]]`, gaps stated explicitly + as ingest candidates.
+- **`lint-wiki.md`** — `/lint-wiki`: broken/red links, orphans, schema violations (frontmatter, retroactively modified raw files via git diff, duplicate titles), contradictions/stale content, content gaps → prioritized report (P1 broken, P2 schema, P3 gaps).
 
-### Schritt 4 — Bootstrap-Ingest
+### Step 4 — Bootstrap ingest
 
-Erste Quelle nach `raw/` legen (z. B. einen Research-Report; bei lokalen Dateien Herkunft/Methode/Verifikationsstand ins Frontmatter), daraus 6–9 Wiki-Seiten generieren + `wiki/00_Index.md` als Root-MOC (type `moc`; Rubriken z. B. Kernkonzepte / Tools / Ingest-Kandidaten). Alles quervernetzt, Frontmatter nach Schema.
+Place a first source into `raw/` (e.g. a research report; for local files, note origin/method/verification status in the frontmatter), generate 6–9 wiki pages from it + `wiki/00_Index.md` as the root MOC (type `moc`; sections e.g. Core Concepts / Tools / Ingest Candidates). Everything cross-linked, frontmatter per schema.
 
-### Schritt 5 — Lint-Verifikation (deterministisch, kein LLM)
+### Step 5 — Lint verification (deterministic, no LLM)
 
 ```bash
 cd ~/llm-wiki && python3 - <<'EOF'
@@ -54,37 +54,37 @@ import re, pathlib
 pages = {p.stem: p.read_text() for p in pathlib.Path('wiki').glob('*.md')}
 errors = []
 def strip_code(t):
-    t = re.sub(r'```.*?```', '', t, flags=re.S)   # Code-Blöcke
-    return re.sub(r'`[^`]*`', '', t)              # Inline-Code
+    t = re.sub(r'```.*?```', '', t, flags=re.S)   # code blocks
+    return re.sub(r'`[^`]*`', '', t)              # inline code
 links = {n: set(re.findall(r'\[\[([^\]|#]+)', strip_code(t))) for n, t in pages.items()}
 for n, ts in links.items():
-    errors += [f"KAPUTT: [[{t}]] in {n}" for t in ts if t not in pages]
+    errors += [f"BROKEN: [[{t}]] in {n}" for t in ts if t not in pages]
 incoming = {t: [s for s, ts in links.items() if t in ts and s != t] for t in pages}
-errors += [f"VERWAIST: {t}" for t, inc in incoming.items() if t != '00_Index' and not inc]
+errors += [f"ORPHAN: {t}" for t, inc in incoming.items() if t != '00_Index' and not inc]
 for n, t in pages.items():
     fm = t.split('---')[1]
-    errors += [f"FRONTMATTER: {f} fehlt in {n}" for f in ('type:','created:','updated:','sources:','tags:') if f not in fm]
+    errors += [f"FRONTMATTER: {f} missing in {n}" for f in ('type:','created:','updated:','sources:','tags:') if f not in fm]
     for s in re.findall(r'raw/\S+\.md', fm):
-        if not pathlib.Path(s).exists(): errors.append(f"SOURCES: {s} fehlt ({n})")
-print(f"{len(pages)} Seiten:", "LINT CLEAN" if not errors else "\n".join(errors))
+        if not pathlib.Path(s).exists(): errors.append(f"SOURCES: {s} missing ({n})")
+print(f"{len(pages)} pages:", "LINT CLEAN" if not errors else "\n".join(errors))
 EOF
 ```
 
-Erwartung: „LINT CLEAN" **oder** ausschließlich KAPUTT-Meldungen zu den absichtlichen roten Links (Ingest-Kandidaten aus dem Index) — alles andere ist ein echter Fehler.
+Expectation: "LINT CLEAN" **or** exclusively BROKEN findings for the intentional red links (ingest candidates from the index) — anything else is a real error. The same check ships as `scripts/lint_wiki.py` (installed by the Ansible playbook).
 
-> **Pitfall:** Meta-Erwähnungen der Link-Syntax (z. B. „nutze `[[Titel]]`") IMMER in Backticks setzen — sonst rendert Obsidian sie als rote Links; der Lint oben ignoriert Code-Spans korrekt.
+> **Pitfall:** ALWAYS put meta-mentions of the link syntax (e.g. "use `[[Title]]`") in backticks — otherwise Obsidian renders them as red links; the lint above correctly ignores code spans.
 
-### Schritt 6 — Git
+### Step 6 — Git
 
 ```bash
-cd ~/llm-wiki && printf '.obsidian/workspace*\n.trash/\n.DS_Store\n' > .gitignore && git init -q && git add -A && git commit -m "Initial LLM-Wiki-Vault nach Karpathy-Muster"
+cd ~/llm-wiki && printf '.obsidian/workspace*\n.trash/\n.DS_Store\n' > .gitignore && git init -q && git add -A && git commit -m "Initial LLM wiki vault (Karpathy pattern)"
 ```
 
-(`.DS_Store` schadet auf Debian nicht und erspart auf macOS Rauschen.)
+(`.DS_Store` does no harm on Debian and avoids noise on macOS.)
 
 ---
 
-## Teil B — Debian: Obsidian-App (optional, ohne root)
+## Part B — Debian: Obsidian app (optional, no root required)
 
 ```bash
 mkdir -p ~/Applications
@@ -92,29 +92,29 @@ URL=$(curl -s https://api.github.com/repos/obsidianmd/obsidian-releases/releases
 curl -sL -o ~/Applications/Obsidian.AppImage "$URL" && chmod +x ~/Applications/Obsidian.AppImage
 ```
 
-**Vault vorregistrieren** (kein Vault-Picker beim ersten Start) — Registry liegt unter `~/.config/obsidian/obsidian.json`:
+**Pre-register the vault** (no vault picker on first start) — the registry lives at `~/.config/obsidian/obsidian.json`:
 
 ```bash
 mkdir -p ~/.config/obsidian
 printf '{"vaults":{"%s":{"path":"%s","ts":%s,"open":true}}}' "$(head -c8 /dev/urandom | od -An -tx1 | tr -d ' \n')" "$HOME/llm-wiki" "$(date +%s%3N)" > ~/.config/obsidian/obsidian.json
 ```
 
-Desktop-Eintrag: `~/.local/share/applications/obsidian.desktop` mit `Exec=$HOME/Applications/Obsidian.AppImage %u`, `MimeType=x-scheme-handler/obsidian;`. Voraussetzung FUSE (`fusermount3`). Bei xrdp/Remote-Desktop ist ein „Exiting GPU process"-Log-Fehler normal (Software-Rendering).
+Desktop entry: `~/.local/share/applications/obsidian.desktop` with `Exec=$HOME/Applications/Obsidian.AppImage %u`, `MimeType=x-scheme-handler/obsidian;`. Requires FUSE (`fusermount3`). With xrdp/remote desktop, an "Exiting GPU process" log error is normal (software rendering).
 
 ---
 
-## Teil C — macOS: Obsidian-App
+## Part C — macOS: Obsidian app
 
-**Installation** (falls nicht schon unter `/Applications/Obsidian.app`):
+**Installation** (unless already present at `/Applications/Obsidian.app`):
 
 ```bash
-brew install --cask obsidian        # oder Download von obsidian.md
+brew install --cask obsidian        # or download from obsidian.md
 ```
 
-**Vault registrieren** — Registry liegt unter `~/Library/Application Support/obsidian/obsidian.json` (gleiches JSON-Format wie auf Debian):
+**Register the vault** — the registry lives at `~/Library/Application Support/obsidian/obsidian.json` (same JSON format as on Debian):
 
 ```bash
-osascript -e 'quit app "Obsidian"' 2>/dev/null; sleep 2   # WICHTIG, falls Obsidian läuft — s. Pitfalls
+osascript -e 'quit app "Obsidian"' 2>/dev/null; sleep 2   # IMPORTANT if Obsidian is running — see pitfalls
 python3 - "$HOME/llm-wiki" <<'EOF'
 import json, pathlib, secrets, sys, time
 vault = sys.argv[1]
@@ -122,39 +122,39 @@ p = pathlib.Path.home()/'Library/Application Support/obsidian/obsidian.json'
 p.parent.mkdir(parents=True, exist_ok=True)
 d = json.loads(p.read_text()) if p.exists() else {"vaults": {}}
 if any(v.get('path') == vault for v in d['vaults'].values()):
-    print("schon registriert:", vault)
+    print("already registered:", vault)
 else:
     d['vaults'][secrets.token_hex(8)] = {"path": vault, "ts": int(time.time()*1000), "open": True}
     p.write_text(json.dumps(d))
-    print("registriert:", vault)
+    print("registered:", vault)
 EOF
 open -a Obsidian
 ```
 
-**Pitfalls (macOS, erlebt 2026-07-17):**
+**Pitfalls (macOS, experienced 2026-07-17):**
 
-- **Registry nie unter laufender App editieren** — Obsidian schreibt `obsidian.json` beim Beenden neu und überschreibt Fremd-Änderungen. Erst `osascript -e 'quit app "Obsidian"'`, dann editieren, dann neu starten.
-- **`open "obsidian://open?path=…"` registriert keinen neuen Vault-Ordner** — für noch nicht registrierte Pfade passiert nichts Automatisierbares (ggf. wartet ein Dialog). Für Skripte immer den Registry-Weg oben nehmen.
-- **Obsidian räumt selbst auf:** Registry-Einträge, deren Pfad nicht mehr existiert (z. B. nach Verschieben eines Vault-Ordners), werden beim nächsten Start automatisch entfernt. Verschobene Vaults müssen einmal neu registriert bzw. per „Open folder as vault" geöffnet werden.
+- **Never edit the registry while the app is running** — Obsidian rewrites `obsidian.json` on quit and overwrites external changes. First `osascript -e 'quit app "Obsidian"'`, then edit, then relaunch.
+- **`open "obsidian://open?path=…"` does not register a new vault folder** — for not-yet-registered paths nothing scriptable happens (a dialog may be waiting). For scripts, always use the registry approach above.
+- **Obsidian cleans up after itself:** registry entries whose path no longer exists (e.g. after moving a vault folder) are removed automatically on the next start. Moved vaults must be re-registered once, or opened via "Open folder as vault".
 
 ---
 
-## Betrieb
+## Operation
 
-- Claude Code **im Vault starten** (`cd ~/llm-wiki && claude`), dann `/ingest`, `/query`, `/lint-wiki`.
-- Es gibt **keinen Automatismus**: Dateien in `raw/` bleiben unverarbeitet bis zum `/ingest`-Aufruf (Cron-Automation ist eine spätere Option).
-- Arbeitsteilung: **Heuristik** = alles, was sich über Dateinamen/Links/Frontmatter regeln lässt (Lint!); **KI** = verstehen, zuordnen, verdichten, verlinken.
-- Deep-Research-Reports eignen sich ideal als raw-Quellen; im Frontmatter der raw-Datei Methode + Verifikationsstand notieren.
+- Start Claude Code **inside the vault** (`cd ~/llm-wiki && claude`), then `/ingest`, `/query`, `/lint-wiki`.
+- There is **no automatism**: files in `raw/` remain unprocessed until `/ingest` is invoked (cron automation is a later option).
+- Division of labor: **heuristics** = everything that can be governed via file names/links/frontmatter (lint!); **AI** = understanding, assigning, condensing, linking.
+- Deep-research reports are ideal raw sources; note method + verification status in the raw file's frontmatter.
 
-## Optional: Obsidian mit lokalem LLM
+## Optional: Obsidian with a local LLM
 
-Ja, das Wiki läuft komplett mit lokalen Modellen — auf zwei Ebenen:
+Yes — the wiki runs entirely on local models, on two levels:
 
-**Ebene 1 — In-Vault-Plugins (Retrieval/Chat in der Obsidian-UI):**
-- **Copilot** (logancyang): verbindet sich mit jedem OpenAI-kompatiblen Endpoint — also direkt mit einem llama.cpp-Server (z. B. `http://LLMHOST:8084/v1`, Modellname = Server-Alias) oder Ollama (CORS-Toggle in den Settings). Für zuverlässiges Vault-RAG Embeddings aktivieren — auch die kann ein llama.cpp-Embedding-Server (`--embeddings`, Port 8085) liefern.
-- **Smart Connections**: nutzt ein eigenes lokales Embedding-Modell (zero-setup, kein Endpoint nötig) für „Relevant Notes"; für Chat auf lokale Endpoints umkonfigurierbar (`http://localhost:11434` o. ä.).
-- **LLM-Wiki-Plugin** (Obsidian-Forum): läuft standardmäßig über Ollama, re-indexiert beim Speichern, Hybrid-Suche — reiner *Retriever*.
+**Level 1 — in-vault plugins (retrieval/chat in the Obsidian UI):**
+- **Copilot** (logancyang): connects to any OpenAI-compatible endpoint — i.e. directly to a llama.cpp server (e.g. `http://LLMHOST:8084/v1`, model name = server alias) or Ollama (CORS toggle in the settings). For reliable vault RAG, enable embeddings — these too can be served by a llama.cpp embedding server (`--embeddings`, port 8085).
+- **Smart Connections**: uses its own local embedding model (zero setup, no endpoint needed) for "Relevant Notes"; chat can be reconfigured to local endpoints (`http://localhost:11434` or similar).
+- **LLM-Wiki plugin** (Obsidian forum): runs on Ollama by default, re-indexes on save, hybrid search — a pure *retriever*.
 
-**Ebene 2 — der Maintainer-Agent selbst:** Das Karpathy-Muster ist agent-agnostisch. Statt Claude Code kann auch ein lokal angebundener Agent (z. B. **Hermes** mit `model.provider llamacpp`, siehe `SETUP-HERMES-HONCHO.md`) den Vault pflegen — `CLAUDE.md` als Schema gilt sinngemäß (Hermes liest Projektregeln analog). Qualitäts-Hinweis: Ingest-Disziplin (5–15 Berührungen, Dedup, saubere Links) ist die anspruchsvollste Aufgabe im System — mit einem 30B-Klasse-Modell funktioniert sie, sollte aber anfangs per `/lint-wiki` engmaschig kontrolliert werden.
+**Level 2 — the maintainer agent itself:** The Karpathy pattern is agent-agnostic. Instead of Claude Code, a locally connected agent (e.g. **Hermes** with `model.provider llamacpp`) can maintain the vault — `CLAUDE.md` applies as the schema analogously (Hermes reads project rules the same way). Quality note: ingest discipline (5–15 touches, dedup, clean links) is the most demanding task in the system — a 30B-class model can handle it, but should initially be monitored closely via `/lint-wiki`.
 
-Faustregel: **Embeddings + Retrieval lokal ist unkritisch** (kleine Modelle reichen), **Ingest-Autorschaft lokal ist möglich**, verdient aber Kontrolle; die Rohdaten verlassen in beiden Fällen nie das eigene Netz.
+Rule of thumb: **local embeddings + retrieval is uncritical** (small models suffice), **local ingest authorship is feasible** but deserves oversight; in both cases the raw data never leaves your own network.
