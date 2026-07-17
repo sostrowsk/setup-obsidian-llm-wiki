@@ -79,6 +79,17 @@ ansible/
 
 No credentials or API keys are required or stored anywhere in this setup.
 
+## The Local AI Stack
+
+This repository is one of four building blocks of a fully local, offline-capable AI stack — overview: [SETUP-LOCAL-AI-STACK.md](SETUP-LOCAL-AI-STACK.md).
+
+| Repo | Layer |
+|---|---|
+| [setup-local-llm](https://github.com/sostrowsk/setup-local-llm) | Model fleet: llama.cpp servers — Qwen 3.6, Gemma 4, embeddings, reranker, Whisper (:8084–:8090) |
+| [setup-open-webui](https://github.com/sostrowsk/setup-open-webui) | Chat & RAG frontend on the fleet (:8080, native, no Docker) |
+| [setup-hermes-honcho](https://github.com/sostrowsk/setup-hermes-honcho) | Autonomous agent + Theory-of-Mind memory (Honcho :8000 on PostgreSQL/pgvector) |
+| [setup-obsidian-llm-wiki](https://github.com/sostrowsk/setup-obsidian-llm-wiki) **(this repo)** | LLM-maintained knowledge wiki (Obsidian viewer, Claude Code/Hermes maintainer) |
+
 ## License
 
 [MIT](LICENSE)
