@@ -1,6 +1,6 @@
 # Fully Autonomous, 100 % Local LLM Wiki — Works Without an Internet Connection
 
-**Self-maintaining knowledge wiki following the Karpathy pattern: Obsidian as the viewer, an LLM agent as a disciplined wiki maintainer. Everything lives in plain Markdown on your own disk — and with local models (llama.cpp / Ollama / Hermes), ingest, query, and retrieval run entirely offline. Your data never leaves your machine.**
+**Self-maintaining knowledge wiki following the Karpathy pattern: Obsidian as the viewer, an LLM agent as a disciplined wiki maintainer. Everything lives in plain Markdown on your own disk — and with local models (llama.cpp on Debian, MLX on Apple Silicon, Hermes as agent), ingest, query, and retrieval run entirely offline. Your data never leaves your machine.**
 
 For **Debian** and **macOS**, as a manual runbook and as an Ansible playbook.
 

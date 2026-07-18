@@ -151,9 +151,10 @@ open -a Obsidian
 Yes — the wiki runs entirely on local models, on two levels:
 
 **Level 1 — in-vault plugins (retrieval/chat in the Obsidian UI):**
-- **Copilot** (logancyang): connects to any OpenAI-compatible endpoint — i.e. directly to a llama.cpp server (e.g. `http://LLMHOST:8084/v1`, model name = server alias) or Ollama (CORS toggle in the settings). For reliable vault RAG, enable embeddings — these too can be served by a llama.cpp embedding server (`--embeddings`, port 8085).
-- **Smart Connections**: uses its own local embedding model (zero setup, no endpoint needed) for "Relevant Notes"; chat can be reconfigured to local endpoints (`http://localhost:11434` or similar).
-- **LLM-Wiki plugin** (Obsidian forum): runs on Ollama by default, re-indexes on save, hybrid search — a pure *retriever*.
+- **Copilot** (logancyang): connects to any OpenAI-compatible endpoint — the llama.cpp fleet (e.g. `http://LLMHOST:8084/v1`, model name = server alias) or, on Apple Silicon, an MLX server (vllm-mlx / `mlx-lm serve`, e.g. `http://localhost:8001/v1`). For reliable vault RAG, enable embeddings — served by a llama.cpp embedding server (`--embeddings`, port 8085) or an MLX embedding endpoint.
+- **Smart Connections**: uses its own local embedding model (zero setup, no endpoint needed) for "Relevant Notes"; chat can be reconfigured to any OpenAI-compatible local endpoint (llama.cpp or MLX).
+
+This stack deliberately uses **no Ollama**: llama.cpp serves the GGUF fleet on Debian, MLX (vllm-mlx / mlx-whisper) covers Apple Silicon — both speak the OpenAI API, so Ollama-only plugins are simply skipped.
 
 **Level 2 — the maintainer agent itself:** The Karpathy pattern is agent-agnostic. Instead of Claude Code, a locally connected agent (e.g. **Hermes** with `model.provider llamacpp`) can maintain the vault — `CLAUDE.md` applies as the schema analogously (Hermes reads project rules the same way). Quality note: ingest discipline (5–15 touches, dedup, clean links) is the most demanding task in the system — a 30B-class model can handle it, but should initially be monitored closely via `/lint-wiki`.
 
